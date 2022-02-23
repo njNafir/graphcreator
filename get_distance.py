@@ -10,28 +10,29 @@ table = dynamodb.Table(dynamodb_table)
 
 
 def lambda_handler(event, context):
-    statusCode = 200
-    result = {
-        'status': 'success',
-        'data': {}
-    }
-
     try:
         data = json.loads(event['body']) if event.get('body', 0) else event
     
-        result['data'] = get_city_distance(data)
+        city_distance = get_city_distance(data['currentIntent']['slots'])
+        
+        result = {
+            "dialogAction": {
+                "type": "Close",
+                "fulfillmentState": "Fulfilled",
+                "message": {
+                  "contentType": "SSML",
+                  "content": "{}".format(city_distance['distance'])
+                },
+            }
+        }
 
     except Exception as error:
-        statusCode = 403
         result = {
             'status': 'error',
             'message': "Something wrong, {}".format(error)
         }
 
-    return {
-        'statusCode': statusCode,
-        'body': json.dumps(result)
-    }
+    return result
 
 
 class DecimalEncoder(json.JSONEncoder):
@@ -47,8 +48,8 @@ class DecimalEncoder(json.JSONEncoder):
 def get_city_distance(data=None):
     try:
         distance = table.get_item(Key={
-            'source': data['source'],
-            'destination': data['destination']
+            'source': data['Source'],
+            'destination': data['Destination']
         })
 
         return ast.literal_eval(
